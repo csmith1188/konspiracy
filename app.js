@@ -7,6 +7,10 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
+app.get('/teacher', (req, res) => {
+    res.render('teacher');
+})
+
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000');
 });
