@@ -4,27 +4,7 @@ const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const app = express();
 const AUTH_URL = 'http://172.16.3.237:420/oauth';
-const THIS_URL = 'http://localhost:3000/login';
-
-function isAuthenticated(req, res, next) {
-    if (req.session.user) {
-        const tokenData = req.session.token;
-
-        try {
-            // Check if the token has expired
-            const currentTime = Math.floor(Date.now() / 1000);
-            if (tokenData.exp < currentTime) {
-                throw new Error('Token has expired');
-            }
-
-            next();
-        } catch (err) {
-            res.redirect(`${FBJS_URL}/oauth?refreshToken=${tokenData.refreshToken}&redirectURL=${THIS_URL}`);
-        }
-    } else {
-        res.redirect(`/login?redirectURL=${THIS_URL}`);
-    }
-}
+const THIS_URL = 'http://172.16.3.237:3000/login';
 
 app.use(session({
 	secret: 'H1!l!k3$3@0fTH3!^3$',
@@ -32,11 +12,18 @@ app.use(session({
 	saveUninitialized: false
 }));
 
+function isAuthenticated(req, res, next) {
+	console.log(req.session.user);
+	
+	if (req.session.user) next()
+	else res.redirect('/login')
+};
+
 app.set('view engine', 'ejs');
 
 app.get('/', isAuthenticated, (req, res) => {
 	try {
-		res.render('index.ejs', { user: req.session.user })
+		res.render('index.ejs', { user: req.session.user.displayName })
 	}
 	catch (error) {
 		res.send(error.message)
@@ -54,17 +41,37 @@ app.get('/teacher', isAuthenticated, (req, res) => {
 
 app.get('/login', (req, res) => {
 	if (req.query.token) {
-		let tokenData = jwt.decode(req.query.token);
-		req.session.token = tokenData;
-		req.session.user = tokenData.username;
-		// if (session.user.permissions == 4) {
-		// 	res.redirect('/teacher');
-		// } else {
-			res.redirect('/');
-		//}
+		try {
+			// Decode the token
+			const tokenData = jwt.decode(req.query.token);
+
+			if (tokenData && tokenData.id) { // Check for a valid user ID
+				// Save user data in the session
+				req.session.user = {
+					id: tokenData.id,
+					email: tokenData.email,
+					displayName: tokenData.displayName,
+					permissions: tokenData.permissions,
+					classrooms: tokenData.classrooms,
+				};
+				console.log('User session saved:', req.session.user); // Debugging log
+				if (tokenData.permissions === 5) {
+					return res.redirect('/teacher');
+				} else {
+					return res.redirect('/');
+				}
+			} else {
+				console.log('Invalid token data:', tokenData); // Debugging log
+				return res.status(400).send('Invalid token');
+			}
+		} catch (error) {
+			console.error('Error decoding token:', error.message); // Debugging log
+			return res.status(400).send('Error decoding token');
+		}
 	} else {
+		console.log('No token provided, rendering login page'); // Debugging log
 		res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-	};
+	}
 });
 
 app.listen(3000, () => {
