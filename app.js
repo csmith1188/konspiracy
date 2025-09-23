@@ -1,6 +1,9 @@
 const express = require('express');
 const ejs = require('ejs');
 const app = express();
+// const sqlite3 = require('sqlite3');
+// const db = new sqlite3.Database('./database.db');
+
 app.set('view engine', 'ejs');
 
 app.get('/', (req, res) => {
@@ -8,7 +11,9 @@ app.get('/', (req, res) => {
 });
 
 app.get('/teacher', (req, res) => {
-    res.render('teacher');
+    res.render('teacher', {
+
+    });
 })
 
 app.listen(3000, () => {
