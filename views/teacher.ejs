@@ -3,9 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Techer Panel</title>
+    <title>Teacher Panel</title>
 </head>
 <body>
-    Welcome Teacher
+    <h1>Welcome Teacher</h1>
+    <form id="quiz-form" method="POST" action="/teacher/confirm">
+        <label for="subject">Choose a subject for the test:</label>
+        <select id="subject" name="subject">
+            <option value="Colors">Colors</option>
+            <option value="Numbers">Numbers</option>
+            <option value="Letters">Letters</option>
+        </select>
+        <button type="button" id="view-quiz">View Quiz</button>
+        <input type="hidden" name="selectedQuiz" id="selectedQuiz">
+        <button type="submit" id="confirm-quiz" style="display: none;">Confirm Quiz</button>
+    </form>
+
+    <div id="quiz-container" style="display: none;">
+        <h2 id="quiz-title"></h2>
+        <div id="questions"></div>
+    </div>
+
+    <script>
+        // Quiz data
+        const quizzes = {
+            Colors: {
+                title: "Colors Quiz",
+                questions: [
+                    "What is the first color of the rainbow?",
+                    "What color is also the color of a fruit?",
+                    "What color is the sun?"
+                ],
+                answers: [
+                    { "Red": true, "Orange": false, "Purple": false, "Blue": false },
+                    { "Yellow": false, "Green": false, "Orange": true, "Violet": false },
+                    { "Red": false, "Yellow": true, "Pink": false, "Blue": false }
+                ]
+            },
+            Numbers: {
+                title: "Numbers Quiz",
+                questions: [
+                    "What is 6 + 7?",
+                    "What is 9 + 10?",
+                    "What is 6 + 9?"
+                ],
+                answers: [
+                    { "67": false, "14": false, "12": false, "13": true },
+                    { "21": false, "910": false, "19": true, "1": false },
+                    { "69": false, "15": true, "3": false, "16": false }
+                ]
+            },
+            Letters: {
+                title: "Letters Quiz",
+                questions: [
+                    "Which of these letters is a vowel?",
+                    "What is the 13th letter of the alphabet?",
+                    "Which letter does 'sea' sound like?"
+                ],
+                answers: [
+                    { "C": false, "B": false, "D": false, "A": true },
+                    { "L": false, "M": true, "N": false, "O": false },
+                    { "C": true, "B": false, "S": false, "V": false }
+                ]
+            }
+        };
+
+        const subjectDropdown = document.getElementById("subject");
+        const quizContainer = document.getElementById("quiz-container");
+        const quizTitle = document.getElementById("quiz-title");
+        const questionsDiv = document.getElementById("questions");
+        const viewQuizButton = document.getElementById("view-quiz");
+        const confirmQuizButton = document.getElementById("confirm-quiz");
+        const selectedQuizInput = document.getElementById("selectedQuiz");
+
+        viewQuizButton.addEventListener("click", function () {
+            const selectedSubject = subjectDropdown.value;
+
+            // Clear previous quiz
+            questionsDiv.innerHTML = "";
+
+            // Display the selected quiz
+            if (quizzes[selectedSubject]) {
+                const quiz = quizzes[selectedSubject];
+                quizTitle.textContent = quiz.title;
+
+                quiz.questions.forEach((question, index) => {
+                    const questionElement = document.createElement("p");
+                    questionElement.textContent = `${index + 1}. ${question}`;
+                    questionsDiv.appendChild(questionElement);
+
+                    const answers = quiz.answers[index];
+                    for (const [answer, isCorrect] of Object.entries(answers)) {
+                        const answerElement = document.createElement("div");
+                        answerElement.innerHTML = `
+                            <label>
+                                <input type="radio" name="q${index}" value="${answer}" disabled>
+                                ${answer}
+                            </label>
+                        `;
+                        questionsDiv.appendChild(answerElement);
+                    }
+                });
+
+                // Show the quiz container and confirm button
+                quizContainer.style.display = "block";
+                confirmQuizButton.style.display = "inline-block";
+
+                // Set the selected quiz in the hidden input
+                selectedQuizInput.value = selectedSubject;
+            }
+        });
+    </script>
 </body>
 </html>

@@ -3,11 +3,14 @@ const ejs = require('ejs');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const app = express();
+const bodyParser = require('body-parser');
 // const sqlite3 = require('sqlite3');
 // const db = new sqlite3.Database('./database.db');
 
-const AUTH_URL = 'http://172.16.3.237:420/oauth';
-const THIS_URL = 'http://172.16.3.237:3000/login';
+const AUTH_URL = 'http://localhost:420/oauth';
+const THIS_URL = 'http://localhost:3000/login';
+
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(session({
 	secret: 'H1!l!k3$3@0fTH3!^3$',
@@ -40,6 +43,16 @@ app.get('/teacher', isAuthenticated, (req, res) => {
 	catch (error) {
 		res.send(error.message)
 	}
+});
+
+app.post('/teacher', (req, res) => {
+    const selectedSubject = req.body.subject;
+
+    if (selectedSubject === 'sample_data') {
+        res.render('sample_test.ejs', { testName: 'Sample Data Test' });
+    } else {
+        res.status(400).send('Invalid subject selected');
+    }
 });
 
 app.get('/login', (req, res) => {
@@ -80,3 +93,11 @@ app.get('/login', (req, res) => {
 app.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
 });
+
+
+
+
+
+
+
+//How would I make the post for the form when the teachers chooses the quiz that it then starts the game for the students and has a special teacher screen
