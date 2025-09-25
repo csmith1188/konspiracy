@@ -8,6 +8,7 @@
 </head>
 
 <body>
+    <div id="time"></div>
     Welcome <%- user %>
 </body>
 <script>
@@ -19,7 +20,7 @@
         let time = 5;
         const interval = setInterval(() => {
             console.log(time);
-
+            document.getElementById('time').innerText = time;
             time--;
             if (time <= 0) clearInterval(interval);
         }, 1000);
