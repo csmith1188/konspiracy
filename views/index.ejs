@@ -1,11 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Konspiracy</title>
 </head>
+
 <body>
     Welcome <%- user %>
 </body>
+<script>
+    window.addEventListener('beforeunload', () => {
+        navigator.sendBeacon('/logout');
+    });
+
+    function countdown() {
+        let time = 5;
+        const interval = setInterval(() => {
+            console.log(time);
+
+            time--;
+            if (time <= 0) clearInterval(interval);
+        }, 1000);
+    }
+</script>
+
 </html>
