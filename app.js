@@ -3,6 +3,9 @@ const ejs = require('ejs');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const app = express();
+// const sqlite3 = require('sqlite3');
+// const db = new sqlite3.Database('./database.db');
+
 const AUTH_URL = 'http://172.16.3.237:420/oauth';
 const THIS_URL = 'http://172.16.3.237:3000/login';
 
