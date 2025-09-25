@@ -1,11 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Techer Panel</title>
+    <title>Teacher Panel</title>
 </head>
+
 <body>
-    Welcome Teacher
+    <div id="time"></div>
+    <button onclick="countdown()">Ready</button>
+    <h1>Welcome Teacher</h1>
+    <% students.forEach(student=> { %>
+        <ul>
+            <%= student %>
+        </ul>
+        <% }) %>
 </body>
+
+<script>
+    function countdown() {
+        let time = 5;
+        const interval = setInterval(() => {
+            console.log(time);
+            document.getElementById('time').innerText = time;
+            time--;
+            if (time <= 0) clearInterval(interval);
+        }, 1000);
+    };
+</script>
+
 </html>
