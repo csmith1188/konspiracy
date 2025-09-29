@@ -113,7 +113,13 @@ app.use(session({
 }));
 
 function isAuthenticated(req, res, next) {
-	console.log(req.session.user);
+	if (req.session.user && req.session.user.classrooms) {
+		// Log all classrooms and their students
+		req.session.user.classrooms.forEach((classroom) => {
+			console.log(`Classroom: ${classroom.name}`);
+			console.log('Students:', classroom.students);
+		});
+	}
 
 	if (req.session.user) next()
 	else res.redirect('/login')
@@ -121,23 +127,7 @@ function isAuthenticated(req, res, next) {
 
 app.set('view engine', 'ejs');
 
-app.get('/', isAuthenticated, (req, res) => {
-	try {
-		res.render('index.ejs', { user: req.session.user.displayName })
-	}
-	catch (error) {
-		res.send(error.message)
-	}
-});
-
-app.get('/teacher', isAuthenticated, (req, res) => {
-	try {
-		res.render('teacher.ejs')
-	}
-	catch (error) {
-		res.send(error.message)
-	}
-});
+const activeUsers = new Set();
 
 app.get('/login', (req, res) => {
 	if (req.query.token) {
@@ -154,6 +144,7 @@ app.get('/login', (req, res) => {
 					permissions: tokenData.permissions,
 					classrooms: tokenData.classrooms,
 				};
+				activeUsers.add(tokenData.id);
 				console.log('User session saved:', req.session.user); // Debugging log
 				if (tokenData.permissions === 5) {
 					return res.redirect('/teacher');
@@ -173,6 +164,59 @@ app.get('/login', (req, res) => {
 		res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
 	}
 });
+
+app.post('/logout', (req, res) => {
+	if (req.session.user) {
+		// Remove the user from the activeUsers list
+		activeUsers.delete(req.session.user.id);
+
+		// Destroy the session
+		req.session.destroy(err => {
+			if (err) {
+				console.error('Error destroying session:', err);
+				return res.status(500).send('Error logging out.');
+			}
+			res.status(200).send('Logged out successfully.');
+		});
+	} else {
+		res.status(400).send('No active session to log out.');
+	}
+});
+
+app.get('/', isAuthenticated, (req, res) => {
+	try {
+		res.render('index.ejs', { user: req.session.user.displayName });
+	}
+	catch (error) {
+		res.send(error.message)
+	}
+});
+
+
+
+app.get('/teacher', isAuthenticated, (req, res) => {
+	try {
+		// Aggregate all students from all classrooms
+		const allStudents = req.session.user.classrooms
+			? req.session.user.classrooms.flatMap(classroom => classroom.students)
+			: [];
+
+		// Filter students who are currently signed in
+		const activeStudents = allStudents
+			.filter(student => activeUsers.has(student.studentId))
+			.map(student => student.displayName);
+
+		// Remove duplicates by creating a Set
+		const uniqueActiveStudents = [...new Set(activeStudents)];
+
+		// Render the teacher panel with the unique list of active students
+		res.render('teacher.ejs', { students: uniqueActiveStudents });
+	} catch (error) {
+		console.log(error.message);
+		res.status(500).send('An error occurred while loading the teacher page.');
+	}
+});
+
 
 app.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
