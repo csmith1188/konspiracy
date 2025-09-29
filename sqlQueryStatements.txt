@@ -1,0 +1,16 @@
+//Query that gets all the games owned by a specific user
+SELECT *
+FROM users
+INNER JOIN quizzes ON users.uid=quizzes.ownerid WHERE users.uid=1;
+
+//Query that gets all Questions in a game
+SELECT *
+FROM quizzes
+INNER JOIN quizquestions ON quizzes.uid=quizquestions.quizid WHERE quizzes.uid=1;
+
+//Query that gets all answers to EACH question in A game AND makes a game javascript object out of them
+SELECT *
+FROM quizzes
+INNER JOIN quizquestions ON quizzes.uid=quizquestions.quizid
+INNER JOIN questionanswers ON quizquestions.uid=questionanswers.questionid
+WHERE quizzes.uid=1;
