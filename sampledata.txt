@@ -5,7 +5,7 @@
 </form>
 <!-- Sample data -->
  <script>
-    let users = ["Bob", "Sue", "Jack"];
+    let users = [];
     let quizNames = ["Colors", "Addition", "Letters"];
     let colorsQuizQuestions = [
         "What is the first color of the rainbow?",

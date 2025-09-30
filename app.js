@@ -129,6 +129,25 @@ app.set('view engine', 'ejs');
 
 const activeUsers = new Set();
 
+app.post('/teacher', (req, res) => {
+    const selectedSubject = req.body.subject;
+
+    if (selectedSubject === 'sample_data') {
+        res.render('sample_test.ejs', { testName: 'Sample Data Test' });
+    } else {
+        res.status(400).send('Invalid subject selected');
+    }
+});
+
+//doesnt work yet used for testing
+// app.post('/', (req, res) => { 
+// 	const testData = req.body; 
+
+// 	console.log('Received test data:', testData);
+
+// 	res.send('Test data submitted successfully');
+// });
+
 app.get('/login', (req, res) => {
 	if (req.query.token) {
 		try {
