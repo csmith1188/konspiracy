@@ -10,6 +10,30 @@
 <body>
     <div id="time"></div>
     Welcome <%- user %>
+    <h1>Student Screen</h1>
+    <div id="quiz-container" style="display: none;">
+        <h2 id="quiz-title"></h2>
+        <div id="questions"></div>
+    </div>
+    <p id="waiting-message">Waiting for the teacher to start the game...</p>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        socket.on('game-started', (data) => {
+            const quizContainer = document.getElementById('quiz-container');
+            const quizTitle = document.getElementById('quiz-title');
+            const questionsDiv = document.getElementById('questions');
+            const waitingMessage = document.getElementById('waiting-message');
+
+            // Display the quiz
+            quizTitle.textContent = `${data.quiz} Quiz`;
+            questionsDiv.innerHTML = `<p>Questions for the ${data.quiz} quiz will appear here.</p>`;
+            quizContainer.style.display = 'block';
+            waitingMessage.style.display = 'none';
+        });
+    </script>
 </body>
 <script>
     window.addEventListener('beforeunload', () => {

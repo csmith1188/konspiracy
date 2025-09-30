@@ -129,24 +129,20 @@ app.set('view engine', 'ejs');
 
 const activeUsers = new Set();
 
-app.post('/teacher', (req, res) => {
-    const selectedSubject = req.body.subject;
+app.post('/teacher/confirm', (req, res) => {
+    const selectedSubject = req.body.selectedQuiz;
 
-    if (selectedSubject === 'sample_data') {
-        res.render('sample_test.ejs', { testName: 'Sample Data Test' });
+	if (selectedQuiz) {
+        currentQuiz = selectedQuiz;
+
+        // Notify students that the game has started
+        io.emit('game-started', { quiz: selectedQuiz });
+
+		res.send('Quiz confirmed: ' + selectedQuiz);
     } else {
-        res.status(400).send('Invalid subject selected');
+        res.status(400).send('No quiz selected');
     }
 });
-
-//doesnt work yet used for testing
-// app.post('/', (req, res) => { 
-// 	const testData = req.body; 
-
-// 	console.log('Received test data:', testData);
-
-// 	res.send('Test data submitted successfully');
-// });
 
 app.get('/login', (req, res) => {
 	if (req.query.token) {
@@ -204,6 +200,11 @@ app.post('/logout', (req, res) => {
 
 app.get('/', isAuthenticated, (req, res) => {
 	try {
+		if (currentQuiz) {
+			res.render('student_screen.ejs', { quiz: currentQuiz });
+		} else {
+			res.status(400).send('No quiz available');
+		}
 		res.render('index.ejs', { user: req.session.user.displayName });
 	}
 	catch (error) {

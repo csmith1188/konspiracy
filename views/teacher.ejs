@@ -18,6 +18,7 @@
         </select>
         <button type="button" id="view-quiz">View Quiz</button>
         <input type="hidden" name="selectedQuiz" id="selectedQuiz">
+        <button type="submit" id="confirm-quiz" style="display: none;">Confirm Quiz</button>
     </form>
 
     <div id="quiz-container" style="display: none;">
@@ -124,7 +125,7 @@
 
 <script>
     function countdown() {
-        let time = 5;
+        let time = 10;
         const interval = setInterval(() => {
             console.log(time);
             document.getElementById('time').innerText = time;
