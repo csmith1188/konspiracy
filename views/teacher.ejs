@@ -25,7 +25,10 @@
             console.log(time);
             document.getElementById('time').innerText = time;
             time--;
-            if (time <= 0) clearInterval(interval);
+            if (time <= 0) {
+                clearInterval(interval);
+                window.location.href = '/quiz';
+            }
         }, 1000);
     };
 </script>

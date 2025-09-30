@@ -1,0 +1,12 @@
+Learn about Web Sockets on W3Schools, Form Bar Wiki and Google.com
+
+Web Sockets are basically live synchronization
+
+
+Assignment Description:
+Make a teacher panel page that allows the teacher to go through each question (Next)
+I'd assume this would have to display all 4 answer choices 
+Only one quiz for now
+At the end, it would show [we'll get there eventually]
+
+Load new page per question but have each page share the same format

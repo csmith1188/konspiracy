@@ -13,98 +13,50 @@ const AUTH_URL = 'http://localhost:420/oauth';
 const THIS_URL = 'http://localhost:3000/login';
 //http://172.16.3.237:3000/login
 
-db.all(`SELECT * FROM quizzes 
-	INNER JOIN quizquestions ON quizzes.uid=quizquestions.quizid
-	INNER JOIN questionanswers ON quizquestions.uid=questionanswers.questionid
-	WHERE quizzes.uid = 1`, (err, rows) => {
-	if (err) {
-		throw err;
-	}
-	let quiz = {
-		uid: rows[0].uid,
-		ownerid: rows[0].ownerid,
-		title: rows[0].quizname,
-		questions: [
-			{
-				questionNumber: rows[0].uid,
-				question: rows[0].questions,
-				answers: [
-					{
-						answer: rows[0].answers,
-						correct: rows[0].correct
-					},
-					{
-						answer: rows[1].answers,
-						correct: rows[1].correct
-					},
-					{
-						answer: rows[2].answers,
-						correct: rows[2].correct
-					},
-					{
-						answer: rows[3].answers,
-						correct: rows[3].correct
-					}
-				]
-			},
-			{
-				questionNumber: rows[4].uid,
-				question: rows[4].questions,
-				answers: [
-					{
-						answer: rows[4].answers,
-						correct: rows[4].correct
-					},
-					{
-						answer: rows[5].answers,
-						correct: rows[5].correct
-					},
-					{
-						answer: rows[6].answers,
-						correct: rows[6].correct
-					},
-					{
-						answer: rows[7].answers,
-						correct: rows[7].correct
-					}
-				]
-			},
-			{
-				questionNumber: rows[8].uid,
-				question: rows[8].questions,
-				answers: [
-					{
-						answer: rows[8].answers,
-						correct: rows[8].correct
-					},
-					{
-						answer: rows[9].answers,
-						correct: rows[9].correct
-					},
-					{
-						answer: rows[10].answers,
-						correct: rows[10].correct
-					},
-					{
-						answer: rows[11].answers,
-						correct: rows[11].correct
-					}
-				]
+db.all(
+	`SELECT * FROM quizzes 
+	   INNER JOIN quizquestions ON quizzes.uid = quizquestions.quizid
+	   INNER JOIN questionanswers ON quizquestions.uid = questionanswers.questionid
+	   WHERE quizzes.uid = 1`,
+	(err, rows) => {
+		if (err) {
+			throw err;
+		}
+
+		// Initialize the quiz object
+		let quiz = {
+			uid: rows[0].uid,
+			ownerid: rows[0].ownerid,
+			title: rows[0].quizname,
+			questions: []
+		};
+
+		// Temporary object to group questions by questionid
+		const groupedQuestions = {};
+
+		rows.forEach((row) => {
+			// Check if the question already exists in the groupedQuestions object
+			if (!groupedQuestions[row.questionid]) {
+				groupedQuestions[row.questionid] = {
+					questionNumber: row.questionid,
+					question: row.questions,
+					answers: []
+				};
 			}
-		]
-	}
-	// console.log(JSON.stringify(quiz, null, 2));
-	function quizObject() {
-		console.log(`Quiz Title: ${quiz.title}`);
-		quiz.questions.forEach(q => {
-			console.log(`Question: ${q.question}`);
-			q.answers.forEach(a => {
-				console.log(` - Answer: ${a.answer} (Correct: ${a.correct})`);
+
+			// Add the current row's answer to the corresponding question's answers array
+			groupedQuestions[row.questionid].answers.push({
+				answer: row.answers,
+				correct: row.correct
 			});
 		});
-	}
-	quizObject();
-});
+
+		// Convert groupedQuestions into an array and add it to the quiz object
+		quiz.questions = Object.values(groupedQuestions);
+
+		// Log the quiz object to verify the structure
+		// console.log(JSON.stringify(quiz, null, 2));
+	});
 
 app.use(session({
 	secret: 'H1!l!k3$3@0fTH3!^3$',
@@ -217,6 +169,27 @@ app.get('/teacher', isAuthenticated, (req, res) => {
 	}
 });
 
+// Endpoint to display the first question of a quiz
+app.get('/quiz', (req, res) => {
+	const quizId = req.params.uid;
+	db.get('SELECT * FROM quizzes', [quizId], (err, quiz) => {
+		if (err) {
+			console.error(err);
+			return res.status(500).send('Database error');
+		}
+
+		if (!quiz) {
+			return res.status(404).send('Quiz not found');
+		}
+
+		// Redirect to the first question
+		res.redirect(`/quiz/:quizId/question/:questionIndex`);
+	});
+});
+
+app.get('/quiz/:quizId/question/:questionIndex', (req, res) => {
+	const quizId = req.params.uid;
+});
 
 app.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
