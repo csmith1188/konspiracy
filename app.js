@@ -7,6 +7,27 @@ const sqlite3 = require('sqlite3');
 const path = require('path')
 const dbPath = path.resolve(__dirname, 'database', 'database.db');
 const db = new sqlite3.Database('database/database.db');
+const http = require('http');
+const { Server } = require("socket.io");
+const server = http.createServer(app);
+const io = new Server(server);
+const bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({ extended: true })); 
+app.use(bodyParser.json());
+
+io. on('connection', (socket) => {
+	console.log('A user connected');
+
+    // Send the current quiz to newly connected students if the game is already started
+    if (currentQuiz) {
+        socket.emit('game-started', { quiz: currentQuiz });
+    }
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
+    });
+});
+
+let currentQuiz = null;//shared state for quiz data
 
 const AUTH_URL = 'http://localhost:420/oauth';
 //http://172.16.3.237:420/oauth
