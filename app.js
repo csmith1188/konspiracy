@@ -3,14 +3,108 @@ const ejs = require('ejs');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const app = express();
-const bodyParser = require('body-parser');
-// const sqlite3 = require('sqlite3');
-// const db = new sqlite3.Database('./database.db');
+const sqlite3 = require('sqlite3');
+const path = require('path')
+const dbPath = path.resolve(__dirname, 'database', 'database.db');
+const db = new sqlite3.Database('database/database.db');
 
 const AUTH_URL = 'http://localhost:420/oauth';
+//http://172.16.3.237:420/oauth
 const THIS_URL = 'http://localhost:3000/login';
+//http://172.16.3.237:3000/login
 
-app.use(bodyParser.urlencoded({ extended: true }));
+db.all(`SELECT * FROM quizzes 
+	INNER JOIN quizquestions ON quizzes.uid=quizquestions.quizid
+	INNER JOIN questionanswers ON quizquestions.uid=questionanswers.questionid
+	WHERE quizzes.uid = 1`, (err, rows) => {
+	if (err) {
+		throw err;
+	}
+	let quiz = {
+		uid: rows[0].uid,
+		ownerid: rows[0].ownerid,
+		title: rows[0].quizname,
+		questions: [
+			{
+				questionNumber: rows[0].uid,
+				question: rows[0].questions,
+				answers: [
+					{
+						answer: rows[0].answers,
+						correct: rows[0].correct
+					},
+					{
+						answer: rows[1].answers,
+						correct: rows[1].correct
+					},
+					{
+						answer: rows[2].answers,
+						correct: rows[2].correct
+					},
+					{
+						answer: rows[3].answers,
+						correct: rows[3].correct
+					}
+				]
+			},
+			{
+				questionNumber: rows[4].uid,
+				question: rows[4].questions,
+				answers: [
+					{
+						answer: rows[4].answers,
+						correct: rows[4].correct
+					},
+					{
+						answer: rows[5].answers,
+						correct: rows[5].correct
+					},
+					{
+						answer: rows[6].answers,
+						correct: rows[6].correct
+					},
+					{
+						answer: rows[7].answers,
+						correct: rows[7].correct
+					}
+				]
+			},
+			{
+				questionNumber: rows[8].uid,
+				question: rows[8].questions,
+				answers: [
+					{
+						answer: rows[8].answers,
+						correct: rows[8].correct
+					},
+					{
+						answer: rows[9].answers,
+						correct: rows[9].correct
+					},
+					{
+						answer: rows[10].answers,
+						correct: rows[10].correct
+					},
+					{
+						answer: rows[11].answers,
+						correct: rows[11].correct
+					}
+				]
+			}
+		]
+	}
+	// console.log(JSON.stringify(quiz, null, 2));
+	function quizObject() {
+		console.log(`Quiz Title: ${quiz.title}`);
+		quiz.questions.forEach(q => {
+			console.log(`Question: ${q.question}`);
+			q.answers.forEach(a => {
+				console.log(` - Answer: ${a.answer} (Correct: ${a.correct})`);
+			});
+		});
+	}
+	quizObject();
+});
 
 app.use(session({
 	secret: 'H1!l!k3$3@0fTH3!^3$',
@@ -19,31 +113,21 @@ app.use(session({
 }));
 
 function isAuthenticated(req, res, next) {
-	console.log(req.session.user);
-	
+	if (req.session.user && req.session.user.classrooms) {
+		// Log all classrooms and their students
+		req.session.user.classrooms.forEach((classroom) => {
+			console.log(`Classroom: ${classroom.name}`);
+			console.log('Students:', classroom.students);
+		});
+	}
+
 	if (req.session.user) next()
 	else res.redirect('/login')
 };
 
 app.set('view engine', 'ejs');
 
-app.get('/', isAuthenticated, (req, res) => {
-	try {
-		res.render('index.ejs', { user: req.session.user.displayName })
-	}
-	catch (error) {
-		res.send(error.message)
-	}
-});
-
-app.get('/teacher', isAuthenticated, (req, res) => {
-	try {
-		res.render('teacher.ejs')
-	}
-	catch (error) {
-		res.send(error.message)
-	}
-});
+const activeUsers = new Set();
 
 app.post('/teacher', (req, res) => {
     const selectedSubject = req.body.subject;
@@ -79,6 +163,7 @@ app.get('/login', (req, res) => {
 					permissions: tokenData.permissions,
 					classrooms: tokenData.classrooms,
 				};
+				activeUsers.add(tokenData.id);
 				console.log('User session saved:', req.session.user); // Debugging log
 				if (tokenData.permissions === 5) {
 					return res.redirect('/teacher');
@@ -98,6 +183,59 @@ app.get('/login', (req, res) => {
 		res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
 	}
 });
+
+app.post('/logout', (req, res) => {
+	if (req.session.user) {
+		// Remove the user from the activeUsers list
+		activeUsers.delete(req.session.user.id);
+
+		// Destroy the session
+		req.session.destroy(err => {
+			if (err) {
+				console.error('Error destroying session:', err);
+				return res.status(500).send('Error logging out.');
+			}
+			res.status(200).send('Logged out successfully.');
+		});
+	} else {
+		res.status(400).send('No active session to log out.');
+	}
+});
+
+app.get('/', isAuthenticated, (req, res) => {
+	try {
+		res.render('index.ejs', { user: req.session.user.displayName });
+	}
+	catch (error) {
+		res.send(error.message)
+	}
+});
+
+
+
+app.get('/teacher', isAuthenticated, (req, res) => {
+	try {
+		// Aggregate all students from all classrooms
+		const allStudents = req.session.user.classrooms
+			? req.session.user.classrooms.flatMap(classroom => classroom.students)
+			: [];
+
+		// Filter students who are currently signed in
+		const activeStudents = allStudents
+			.filter(student => activeUsers.has(student.studentId))
+			.map(student => student.displayName);
+
+		// Remove duplicates by creating a Set
+		const uniqueActiveStudents = [...new Set(activeStudents)];
+
+		// Render the teacher panel with the unique list of active students
+		res.render('teacher.ejs', { students: uniqueActiveStudents });
+	} catch (error) {
+		console.log(error.message);
+		res.status(500).send('An error occurred while loading the teacher page.');
+	}
+});
+
 
 app.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
