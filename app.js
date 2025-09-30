@@ -55,6 +55,15 @@ app.post('/teacher', (req, res) => {
     }
 });
 
+//doesnt work yet used for testing
+// app.post('/', (req, res) => { 
+// 	const testData = req.body; 
+
+// 	console.log('Received test data:', testData);
+
+// 	res.send('Test data submitted successfully');
+// });
+
 app.get('/login', (req, res) => {
 	if (req.query.token) {
 		try {
@@ -93,11 +102,3 @@ app.get('/login', (req, res) => {
 app.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
 });
-
-
-
-
-
-
-
-//How would I make the post for the form when the teachers chooses the quiz that it then starts the game for the students and has a special teacher screen
