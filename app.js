@@ -20,14 +20,13 @@ io. on('connection', (socket) => {
 
     // Send the current quiz to newly connected students if the game is already started
     if (currentQuiz) {
+		console.log('Sending current quiz to newly connected user:', currentQuiz);
         socket.emit('game-started', { quiz: currentQuiz });
     }
     socket.on('disconnect', () => {
         console.log('A user disconnected');
     });
 });
-
-let currentQuiz = null;//shared state for quiz data
 
 const AUTH_URL = 'http://localhost:420/oauth';
 //http://172.16.3.237:420/oauth
@@ -150,21 +149,65 @@ app.set('view engine', 'ejs');
 
 const activeUsers = new Set();
 
+//shared state for quiz data
+let currentQuiz = null;
+
 app.post('/teacher/confirm', (req, res) => {
-    const selectedSubject = req.body.selectedQuiz;
+    const selectedQuiz = req.body.selectedQuiz;
 
-	if (selectedQuiz) {
-        currentQuiz = selectedQuiz;
+    if (selectedQuiz) {
+        const quizzes = {
+            Colors: {
+                title: "Colors Quiz",
+                questions: [
+                    "What is the first color of the rainbow?",
+                    "What color is also the color of a fruit?",
+                    "What color is the sun?"
+                ],
+                answers: [
+                    { "Red": true, "Orange": false, "Purple": false, "Blue": false },
+                    { "Yellow": false, "Green": false, "Orange": true, "Violet": false },
+                    { "Red": false, "Yellow": true, "Pink": false, "Blue": false }
+                ]
+            },
+            Numbers: {
+                title: "Numbers Quiz",
+                questions: [
+                    "What is 6 + 7?",
+                    "What is 9 + 10?",
+                    "What is 6 + 9?"
+                ],
+                answers: [
+                    { "67": false, "14": false, "12": false, "13": true },
+                    { "21": false, "910": false, "19": true, "1": false },
+                    { "69": false, "15": true, "3": false, "16": false }
+                ]
+            },
+            Letters: {
+                title: "Letters Quiz",
+                questions: [
+                    "Which of these letters is a vowel?",
+                    "What is the 13th letter of the alphabet?",
+                    "Which letter does 'sea' sound like?"
+                ],
+                answers: [
+                    { "C": false, "B": false, "D": false, "A": true },
+                    { "L": false, "M": true, "N": false, "O": false },
+                    { "C": true, "B": false, "S": false, "V": false }
+                ]
+            }
+        };
+		// Store the full quiz data
+        currentQuiz = quizzes[selectedQuiz];
+		console.log('Current quiz:', currentQuiz);
 
-        // Notify students that the game has started
-        io.emit('game-started', { quiz: selectedQuiz });
+        io.emit('game-started', { quiz: currentQuiz });
 
-		res.send('Quiz confirmed: ' + selectedQuiz);
+        res.send('Quiz confirmed: ' + selectedQuiz);
     } else {
         res.status(400).send('No quiz selected');
     }
 });
-
 app.get('/login', (req, res) => {
 	if (req.query.token) {
 		try {
@@ -220,20 +263,17 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/', isAuthenticated, (req, res) => {
-	try {
-		if (currentQuiz) {
-			res.render('student_screen.ejs', { quiz: currentQuiz });
-		} else {
-			res.status(400).send('No quiz available');
-		}
-		res.render('index.ejs', { user: req.session.user.displayName });
-	}
-	catch (error) {
-		res.send(error.message)
-	}
+    try {
+		const user= req.session.user.displayName;
+        if (currentQuiz) {
+            return res.render('index.ejs', { quiz: currentQuiz, user});
+        } else {
+            return res.render('index.ejs', { user });
+        }
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
 });
-
-
 
 app.get('/teacher', isAuthenticated, (req, res) => {
 	try {
