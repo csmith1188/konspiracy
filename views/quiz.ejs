@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= quiz.title %> Quiz</title>
+</head>
+<body>
+    <h1><%= quiz.title %> Quiz</h1>
+    <h2>Question <%= questionNumber + 1 %> of <%= quiz.questions.length %></h2>
+    
+    <% const currentQuestion = quiz.questions[questionNumber]; %>
+    <h3><%= currentQuestion.question %></h3>
+    <ul>
+        <% currentQuestion.answers.forEach((answer) => { %>
+            <li><%= answer.answer %></li>
+        <% }) %>
+    </ul>
+</body>
+</html>
