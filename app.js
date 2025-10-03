@@ -203,7 +203,7 @@ app.post('/teacher/confirm', (req, res) => {
 
         io.emit('game-started', { quiz: currentQuiz });
 
-        res.send('Quiz confirmed: ' + selectedQuiz);
+        res.redirect('/teacher');
     } else {
         res.status(400).send('No quiz selected');
     }
@@ -265,11 +265,7 @@ app.post('/logout', (req, res) => {
 app.get('/', isAuthenticated, (req, res) => {
     try {
 		const user= req.session.user.displayName;
-        if (currentQuiz) {
-            return res.render('index.ejs', { quiz: currentQuiz, user});
-        } else {
-            return res.render('index.ejs', { user });
-        }
+		return res.render('index.ejs', { user });
     } catch (error) {
         res.status(500).send(error.message);
     }
