@@ -7,19 +7,14 @@
 </head>
 <body>
     <h1><%= quiz.title %> Quiz</h1>
-    <h2>Question <%= questionIndex + 1 %> of <%= quiz.questions.length %></h2>
-    <p><%= question.text %></p>
-
+    <h2>Question <%= questionNumber + 1 %> of <%= quiz.questions.length %></h2>
+    
+    <% const currentQuestion = quiz.questions[questionNumber]; %>
+    <h3><%= currentQuestion.question %></h3>
     <ul>
-        <% question.answers.forEach((answer, index) => { %>
-            <li><%= answer %></li>
+        <% currentQuestion.answers.forEach((answer) => { %>
+            <li><%= answer.answer %></li>
         <% }) %>
     </ul>
-
-    <% if (nextQuestionIndex !== null) { %>
-        <a href="/quiz/<%= quiz.id %>/question/<%= nextQuestionIndex %>">Next Question</a>
-    <% } else { %>
-        <p>End of Quiz</p>
-    <% } %>
 </body>
 </html>

@@ -10,3 +10,21 @@ Only one quiz for now
 At the end, it would show [we'll get there eventually]
 
 Load new page per question but have each page share the same format
+
+    <p><%= question.text %></p>
+
+    <ul>
+        <% question.answers.forEach((answer, index) => { %>
+            <li><%= answer %></li>
+        <% }) %>
+    </ul>
+
+    <% if (nextQuestionIndex !== null) { %>
+        <a href="/quiz/<%= quiz.id %>/question/<%= nextQuestionIndex %>">Next Question</a>
+    <% } else { %>
+        <p>End of Quiz</p>
+    <% } %>
+
+
+    Another issue I had is that the quiz that gets chosen on ready is related to the SQL. 
+    How do I make that so it corresponds with what quiz is chosen
