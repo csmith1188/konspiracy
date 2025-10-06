@@ -14,102 +14,10 @@ const dbPath = path.resolve(__dirname, 'database', 'database.db');
 const db = new sqlite3.Database('database/database.db');
 
 //replace with your oauth server url
-const AUTH_URL = 'http://172.16.3.237:420/oauth';
+const AUTH_URL = 'http://localhost:420/oauth';
 //replace with your app url
-const THIS_URL = 'http://172.16.3.237:3000/login';
+const THIS_URL = 'http://localhost:3000/login';
 
-db.all(`SELECT * FROM quizzes 
-	INNER JOIN quizquestions ON quizzes.uid=quizquestions.quizid
-	INNER JOIN questionanswers ON quizquestions.uid=questionanswers.questionid
-	WHERE quizzes.uid = 1`, (err, rows) => {
-	if (err) {
-		throw err;
-	}
-	let quiz = {
-		uid: rows[0].uid,
-		ownerid: rows[0].ownerid,
-		title: rows[0].quizname,
-		questions: [
-			{
-				questionNumber: rows[0].uid,
-				question: rows[0].questions,
-				answers: [
-					{
-						answer: rows[0].answers,
-						correct: rows[0].correct
-					},
-					{
-						answer: rows[1].answers,
-						correct: rows[1].correct
-					},
-					{
-						answer: rows[2].answers,
-						correct: rows[2].correct
-					},
-					{
-						answer: rows[3].answers,
-						correct: rows[3].correct
-					}
-				]
-			},
-			{
-				questionNumber: rows[4].uid,
-				question: rows[4].questions,
-				answers: [
-					{
-						answer: rows[4].answers,
-						correct: rows[4].correct
-					},
-					{
-						answer: rows[5].answers,
-						correct: rows[5].correct
-					},
-					{
-						answer: rows[6].answers,
-						correct: rows[6].correct
-					},
-					{
-						answer: rows[7].answers,
-						correct: rows[7].correct
-					}
-				]
-			},
-			{
-				questionNumber: rows[8].uid,
-				question: rows[8].questions,
-				answers: [
-					{
-						answer: rows[8].answers,
-						correct: rows[8].correct
-					},
-					{
-						answer: rows[9].answers,
-						correct: rows[9].correct
-					},
-					{
-						answer: rows[10].answers,
-						correct: rows[10].correct
-					},
-					{
-						answer: rows[11].answers,
-						correct: rows[11].correct
-					}
-				]
-			}
-		]
-	}
-	// console.log(JSON.stringify(quiz, null, 2));
-	function quizObject() {
-		console.log(`Quiz Title: ${quiz.title}`);
-		quiz.questions.forEach(q => {
-			console.log(`Question: ${q.question}`);
-			q.answers.forEach(a => {
-				console.log(` - Answer: ${a.answer} (Correct: ${a.correct})`);
-			});
-		});
-	}
-	quizObject();
-});
 
 function getActiveStudents(teacherClassrooms) {
 	if (!teacherClassrooms) return [];
@@ -256,6 +164,8 @@ io.on('connection', (socket) => {
 	});
 });
 
+app.use(express.urlencoded({ extended: true }));
+
 function isAuthenticated(req, res, next) {
 	if (req.session.user && req.session.user.classrooms) {
 		// Log all classrooms and their students
@@ -381,6 +291,82 @@ app.get('/teacher', isAuthenticated, (req, res) => {
 	}
 });
 
+app.post('/teacher', isAuthenticated, (req, res) => {
+	const selectedQuiz = req.body.selectedQuiz;
+	console.log(`Selected quiz: ${selectedQuiz}`);
+	
+	// Find the quiz UID in the database
+    db.get('SELECT uid FROM quizzes WHERE quizname = ?', [selectedQuiz], (err, row) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).send('Database error');
+        }
+        if (!row) {
+            return res.status(404).send('Quiz not found');
+        }
+
+        // Store the UID in the session for later use
+        req.session.selectedQuizUid = row.uid;
+        console.log(`Stored quiz UID in session: ${row.uid}`);
+		res.redirect('/quiz');
+	});
+});
+
+app.get('/quiz', isAuthenticated, (req, res) => {
+	const quizUid = req.session.selectedQuizUid;
+	console.log(`Quiz UID retrieved from session: ${quizUid}`);
+	try {
+		db.all(
+			`SELECT * FROM quizzes 
+			   INNER JOIN quizquestions ON quizzes.uid = quizquestions.quizid
+			   INNER JOIN questionanswers ON quizquestions.uid = questionanswers.questionid
+			   WHERE quizzes.uid = ?`, [quizUid],
+			(err, rows) => {
+				if (err) {
+					throw err;
+				}
+
+				// Initialize the quiz object
+				let quiz = {
+					uid: rows[0].uid,
+					ownerid: rows[0].ownerid,
+					title: rows[0].quizname,
+					questions: []
+				};
+
+				// Temporary object to group questions by questionid
+				const groupedQuestions = {};
+				let questionIndex = 0;
+
+				rows.forEach((row) => {
+					// Check if the question already exists in the groupedQuestions object
+					if (!groupedQuestions[row.questionid]) {
+						groupedQuestions[row.questionid] = {
+							question: row.questions,
+							answers: []
+						};
+					}
+
+					// Add the current row's answer to the corresponding question's answers array
+					groupedQuestions[row.questionid].answers.push({
+						answer: row.answers,
+						correct: row.correct
+					});
+				});
+				
+				// Convert groupedQuestions into an array and add it to the quiz object
+				quiz.questions = Object.values(groupedQuestions);
+
+				res.render('quiz.ejs', { 
+					quiz: quiz,
+					questionNumber: questionIndex
+				});
+			}
+		);
+	} catch (error) {
+		res.send(error.message)
+	}
+});
 server.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
 });
