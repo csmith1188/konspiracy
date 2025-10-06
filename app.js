@@ -2,23 +2,167 @@ const express = require('express');
 const ejs = require('ejs');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 const app = express();
+const server = createServer(app);
+const io = new Server(server);
 const sqlite3 = require('sqlite3');
-const path = require('path')
+const path = require('path');
+const { count } = require('console');
 const dbPath = path.resolve(__dirname, 'database', 'database.db');
 const db = new sqlite3.Database('database/database.db');
 
+//replace with your oauth server url
 const AUTH_URL = 'http://localhost:420/oauth';
-//http://172.16.3.237:420/oauth
+//replace with your app url
 const THIS_URL = 'http://localhost:3000/login';
-//http://172.16.3.237:3000/login
 
 
-app.use(session({
+function getActiveStudents(teacherClassrooms) {
+	if (!teacherClassrooms) return [];
+
+	const allStudents = teacherClassrooms.flatMap(classroom => classroom.students);
+	const activeStudents = allStudents
+		.filter(student => activeUsers.has(student.studentId))
+		.map(student => student.displayName);
+	return [...new Set(activeStudents)]; // Remove duplicates
+}
+
+// Gets all student IDs in teacher's classrooms
+function studentsInClass(teacherClassrooms) {
+	if (!teacherClassrooms) return [];
+
+	const studentIds = teacherClassrooms
+		.flatMap(classroom => classroom.students)
+		.map(student => student.studentId);
+
+	return [...new Set(studentIds)]; // Remove duplicates
+}
+
+// Emit event to all students in teacher's classrooms
+function emitToClass(teacherSocket, eventName, data) {
+	const teacherClassrooms = teacherSocket.request.session.user.classrooms;
+	const studentIds = studentsInClass(teacherClassrooms);
+
+	// Emit event to each connected student
+	io.sockets.sockets.forEach(socket => {
+		if (socket.userRole === 'student' && studentIds.includes(socket.userId)) {
+			socket.emit(eventName, data);
+		}
+	});
+}
+
+// Session middleware
+const sessionMiddleware = session({
 	secret: 'H1!l!k3$3@0fTH3!^3$',
 	resave: false,
 	saveUninitialized: false
-}));
+});
+
+app.use(sessionMiddleware);
+
+// Share session with Socket.IO
+io.use((socket, next) => {
+	sessionMiddleware(socket.request, {}, next);
+});
+
+io.use((socket, next) => {
+	if (socket.request.session && socket.request.session.user) {
+		socket.userId = socket.request.session.user.id;
+		socket.userRole = socket.request.session.user.permissions === 5 ? 'teacher' : 'student';
+		next();
+	} else {
+		next(new Error('unauthorized'));
+	}
+});
+
+// Simple countdown state
+let countdownActive = false;
+let countdownEndTime = null;
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+	console.log(`${socket.userRole} connected`);
+
+	// If countdown is active, tell new user the remaining time (only if they're in the right class)
+	if (countdownActive && countdownEndTime) {
+		const remaining = Math.ceil((countdownEndTime - Date.now()) / 1000);
+		if (remaining > 0) {
+			// For students, check if they're in a teacher's class that has an active countdown
+			if (socket.userRole === 'student') {
+				// Find if any teacher has this student in their class
+				io.sockets.sockets.forEach(teacherSocket => {
+					if (teacherSocket.userRole === 'teacher' && teacherSocket.request.session.user.classrooms) {
+						const studentIds = studentsInClass(teacherSocket.request.session.user.classrooms);
+						if (studentIds.includes(socket.userId)) {
+							socket.emit('countdown:sync', { remaining });
+						}
+					}
+				});
+			} else if (socket.userRole === 'teacher') {
+				socket.emit('countdown:sync', { remaining });
+			}
+		}
+	}
+
+	// Handle teacher starting countdown - only affect their students
+	socket.on('start-countdown', () => {
+		if (socket.userRole === 'teacher' && !countdownActive) {
+			countdownActive = true;
+			countdownEndTime = Date.now() + 5000; // 5 seconds
+
+			// Tell the teacher
+			socket.emit('countdown-start', { endTime: countdownEndTime });
+			
+			// Tell only students in this teacher's classes
+			emitToClass(socket, 'countdown-start', { endTime: countdownEndTime });
+
+			// Stop countdown after 5 seconds
+			setTimeout(() => {
+				countdownActive = false;
+				countdownEndTime = null;
+				
+				// Tell the teacher
+				socket.emit('countdown-done');
+				
+				// Tell only students in this teacher's classes
+				emitToClass(socket, 'countdown-done');
+			}, 6000);
+		}
+	});
+
+	if (socket.userRole === 'student') {
+		activeUsers.add(socket.userId)
+
+		io.sockets.sockets.forEach(teacherSocket => {
+			if (teacherSocket.userRole === 'teacher' && teacherSocket.request.session.user.classrooms) {
+				const activeStudents = getActiveStudents(teacherSocket.request.session.user.classrooms);
+				teacherSocket.emit('update-students', activeStudents);
+			}
+		});
+	}
+
+	if (socket.userRole === 'teacher' && socket.request.session.user.classrooms) {
+		const activeStudents = getActiveStudents(socket.request.session.user.classrooms);
+		socket.emit('update-students', activeStudents);
+	};
+
+	socket.on('disconnect', () => {
+		console.log(`${socket.userRole} disconnected`);
+
+		if (socket.userRole === 'student') {
+			activeUsers.delete(socket.userId);
+
+			io.sockets.sockets.forEach(teacherSocket => {
+				if (teacherSocket.userRole === 'teacher' && teacherSocket.request.session.user.classrooms) {
+					const activeStudents = getActiveStudents(teacherSocket.request.session.user.classrooms);
+					teacherSocket.emit('update-students', activeStudents);
+				}
+			});
+		}
+	});
+});
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -38,6 +182,25 @@ function isAuthenticated(req, res, next) {
 app.set('view engine', 'ejs');
 
 const activeUsers = new Set();
+
+app.post('/teacher', (req, res) => {
+	const selectedSubject = req.body.subject;
+
+	if (selectedSubject === 'sample_data') {
+		res.render('sample_test.ejs', { testName: 'Sample Data Test' });
+	} else {
+		res.status(400).send('Invalid subject selected');
+	}
+});
+
+//doesnt work yet used for testing
+// app.post('/', (req, res) => { 
+// 	const testData = req.body; 
+
+// 	console.log('Received test data:', testData);
+
+// 	res.send('Test data submitted successfully');
+// });
 
 app.get('/login', (req, res) => {
 	if (req.query.token) {
@@ -102,10 +265,10 @@ app.get('/', isAuthenticated, (req, res) => {
 	}
 });
 
-
-
 app.get('/teacher', isAuthenticated, (req, res) => {
 	try {
+		// io.on('connenction', () => {
+
 		// Aggregate all students from all classrooms
 		const allStudents = req.session.user.classrooms
 			? req.session.user.classrooms.flatMap(classroom => classroom.students)
@@ -121,6 +284,7 @@ app.get('/teacher', isAuthenticated, (req, res) => {
 
 		// Render the teacher panel with the unique list of active students
 		res.render('teacher.ejs', { students: uniqueActiveStudents });
+		// });
 	} catch (error) {
 		console.log(error.message);
 		res.status(500).send('An error occurred while loading the teacher page.');
@@ -203,7 +367,6 @@ app.get('/quiz', isAuthenticated, (req, res) => {
 		res.send(error.message)
 	}
 });
-
-app.listen(3000, () => {
+server.listen(3000, () => {
 	console.log('Server is running on http://localhost:3000');
 });
