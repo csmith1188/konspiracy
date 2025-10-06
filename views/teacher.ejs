@@ -9,15 +9,21 @@
 
 <body>
     <h1>Welcome Teacher</h1>
-    <form id="quiz-form" method="POST" action="/teacher/confirm">
+    <form id="quiz-form" method="POST" action="/teacher">
         <label for="subject">Choose a subject for the test:</label>
-        <select id="subject" name="subject">
+        <select id="subject" name="selectedQuiz">
             <option value="Colors">Colors</option>
             <option value="Numbers">Numbers</option>
             <option value="Letters">Letters</option>
         </select>
         <button type="button" id="view-quiz">View Quiz</button>
-        <input type="hidden" name="selectedQuiz" id="selectedQuiz">
+        <div id="time"></div>
+        <button style="display: none;" type="button" onclick="countdown()" id="ready-button">Ready</button>
+        <% students.forEach(student=> { %>
+            <ul>
+                <%= student %>
+            </ul>
+            <% }) %>
     </form>
 
     <div id="quiz-container" style="display: none;">
@@ -74,10 +80,11 @@
         const quizTitle = document.getElementById("quiz-title");
         const questionsDiv = document.getElementById("questions");
         const viewQuizButton = document.getElementById("view-quiz");
-        const confirmQuizButton = document.getElementById("confirm-quiz");
-        const selectedQuizInput = document.getElementById("selectedQuiz");
+        // const confirmQuizButton = document.getElementById("confirm-quiz");
+        // const selectedQuizInput = document.getElementById("selectedQuiz");
 
         viewQuizButton.addEventListener("click", function () {
+            document.getElementById("ready-button").style.display = "inline-block";
             const selectedSubject = subjectDropdown.value;
 
             // Clear previous quiz
@@ -107,31 +114,25 @@
                 });
 
                 quizContainer.style.display = "block";
-                confirmQuizButton.style.display = "inline-block";
-
-                selectedQuizInput.value = selectedSubject;
+                // confirmQuizButton.style.display = "inline-block";
             }
         });
     </script>
-    <div id="time"></div>
-    <button onclick="countdown()">Ready</button>
-    <% students.forEach(student=> { %>
-        <ul>
-            <%= student %>
-        </ul>
-        <% }) %>
 </body>
 
 <script>
     function countdown() {
         let time = 5;
+
         const interval = setInterval(() => {
-            console.log(time);
             document.getElementById('time').innerText = time;
             time--;
-            if (time <= 0) clearInterval(interval);
+            if (time <= 0) {
+                clearInterval(interval);
+                document.getElementById('quiz-form').submit(); // Submit the form to /teacher
+            }
         }, 1000);
-    };
+    }
 </script>
 
 </html>
