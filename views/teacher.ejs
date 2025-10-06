@@ -187,13 +187,20 @@
             });
         });
     </script>
-
+    <div id="time"></div>
+    <button onclick="countdown()">Ready</button>
+    <% students.forEach(student=> { %>
+        <ul>
+            <%= student %>
+        </ul>
+        <% }) %>
+        <!-- directs to user page just for testing -->
+        <button onclick="location.href='/'">user page</button>
 </body>
 
 <script>
     function countdown() {
-        let time = 5;
-
+        let time = 10;
         const interval = setInterval(() => {
             document.getElementById('time').innerText = time;
             time--;
