@@ -61,19 +61,50 @@ socket.on('no-quiz', (data) => {
     </script>
 </body>
 <script>
+    const socket = io();
+    let timer = null;
+
+    // Start countdown when server says so
+    socket.on('countdown-start', (data) => {
+        let remaining = Math.ceil((data.endTime - Date.now()) / 1000);
+        
+        timer = setInterval(() => {
+            document.getElementById('time').innerText = remaining;
+            remaining--;
+            if (remaining < 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    });
+
+    // Sync countdown if joining late
+    socket.on('countdown:sync', (data) => {
+        let remaining = data.remaining;
+        
+        timer = setInterval(() => {
+            document.getElementById('time').innerText = remaining;
+            remaining--;
+            if (remaining < 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    });
+
+    // Clear when done
+    socket.on('countdown-done', () => {
+        document.getElementById('time').innerText = '';
+        if (timer) clearInterval(timer);
+    });
+    
+        socket.on('next-question', () => {
+            alert('Next question!');
+        });
+
     window.addEventListener('beforeunload', () => {
         navigator.sendBeacon('/logout');
     });
-
-    function countdown() {
-        let time = 5;
-        const interval = setInterval(() => {
-            console.log(time);
-            document.getElementById('time').innerText = time;
-            time--;
-            if (time <= 0) clearInterval(interval);
-        }, 1000);
-    }
 </script>
+
+</body>
 
 </html>
