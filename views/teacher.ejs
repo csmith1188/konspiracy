@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-
+    
 <head>
     <meta charset="UTF-8">
     <title>Teacher Panel</title>
@@ -16,12 +16,25 @@
         <div id="time"></div>
         <button style="display:none;" type="button" onclick="countdown()" id="ready-button">Ready</button>
     </form>
-
-    <div id="quiz-container" style="display:none;">
+    
+    <div id="quiz-container" style="display: none;">
         <h2 id="quiz-title"></h2>
         <div id="questions"></div>
     </div>
-
+    
+    <button id="ready">Ready</button>
+    <div>
+        <h3>Active Students in Your Classes:</h3>
+        <ul id="students">
+            <% students.forEach(student=> { %>
+                <li>
+                    <%= student %>
+                </li>
+                <% }) %>
+            </ul>
+        </div>
+        
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         // Injected from server
         const quizzes = <%- JSON.stringify(quizzes) %>;
@@ -80,7 +93,90 @@
                 }
             }, 1000);
         }
+
+                quizContainer.style.display = "block";
+                confirmQuizButton.style.display = "inline-block";
+
+                selectedQuizInput.value = selectedSubject;
+            }
+        });
+
+        const socket = io();
+        let timer = null;
+
+        // Button click - send to server
+        document.getElementById('ready').onclick = () => {
+            socket.emit('start-countdown');
+        };
+
+        // Start countdown when server says so
+        socket.on('countdown-start', (data) => {
+            let remaining = Math.ceil((data.endTime - Date.now()) / 1000);
+
+            timer = setInterval(() => {
+                document.getElementById('time').innerText = remaining;
+                remaining--;
+                if (remaining < 0) {
+                    clearInterval(timer);
+                }
+            }, 1000);
+        });
+
+        // Sync countdown if joining late
+        socket.on('countdown:sync', (data) => {
+            let remaining = data.remaining;
+
+            timer = setInterval(() => {
+                document.getElementById('time').innerText = remaining;
+                remaining--;
+                if (remaining < 0) {
+                    clearInterval(timer);
+                }
+            }, 1000);
+        });
+
+        // Clear when done
+        socket.on('countdown-done', () => {
+            document.getElementById('time').innerText = '';
+            if (timer) clearInterval(timer);
+            alert('Question?')
+        });
+
+        // Update student list
+        socket.on('update-students', (students) => {
+            const studentList = document.getElementById('students');
+            studentList.innerHTML = '';
+
+            students.forEach(student => {
+                const li = document.createElement('li');
+                li.textContent = student;
+                studentList.appendChild(li);
+            });
+        });
     </script>
+    <div id="time"></div>
+    <button onclick="countdown()">Ready</button>
+    <% students.forEach(student=> { %>
+        <ul>
+            <%= student %>
+        </ul>
+        <% }) %>
+        <!-- directs to user page just for testing -->
+        <button onclick="location.href='/'">user page</button>
 </body>
+
+<script>
+    function countdown() {
+        let time = 10;
+        const interval = setInterval(() => {
+            document.getElementById('time').innerText = time;
+            time--;
+            if (time <= 0) {
+                clearInterval(interval);
+                document.getElementById('quiz-form').submit(); // Submit the form to /teacher
+            }
+        }, 1000);
+    }
+</script>
 
 </html>
